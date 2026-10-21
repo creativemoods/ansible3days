@@ -1,0 +1,144 @@
+---
+- name: Configure the training fleet
+  hosts: lab
+  become: true
+  tasks:
+    - name: Install common packages
+      ansible.builtin.package:
+        name:
+          - htop
+          - curl
+          - ca-certificates
+        state: present
+
+    - name: Create the deployment account
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: "{{ item.shell }}"
+        create_home: true
+        state: present
+      loop: "{{ team_accounts }}"
+
+    - name: Install the training marker
+      ansible.builtin.copy:
+        content: "Managed by Ansible training\n"
+        dest: /etc/ansible-training
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Create application directories
+      ansible.builtin.file:
+        path: "{{ item.key }}"
+        state: directory
+        mode: "{{ item.value }}"
+      loop: "{{ app_directories | dict2items }}"
+
+    - name: Install the training banner marker
+      ansible.builtin.copy:
+        content: "Training banner marker\n"
+        dest: /etc/ansible-training-banner
+        owner: root
+        group: root
+        mode: '0644'
+      when: training_banner_enabled | bool
+
+    - name: Inspect the training banner marker
+      ansible.builtin.stat:
+        path: /etc/ansible-training-banner
+      register: training_banner_marker
+
+    - name: Explain the existing banner marker
+      ansible.builtin.debug:
+        msg: This host has the training banner
+      when: training_banner_marker.stat.exists
+
+- name: Configure the training website
+  hosts: web
+  become: true
+  tasks:
+    - name: Install Nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Create the document root
+      ansible.builtin.file:
+#        path: /var/www/training
+        path: "{{ web_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Deploy the homepage
+      ansible.builtin.template:
+        src: templates/index.html.j2
+        dest: "{{ web_root }}/index.html"
+        owner: root
+        group: root
+        mode: '0644'
+      tags:
+        - content
+
+#    - name: Deploy the homepage
+#      ansible.builtin.copy:
+#        content: "<h1>Ansible training</h1>\n"
+#        dest: /var/www/training/index.html
+#        owner: root
+#        group: root
+#        mode: '0644'
+
+    - name: Deploy the server configuration
+      ansible.builtin.template:
+        src: templates/training.conf.j2
+        dest: /etc/nginx/conf.d/training.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Validate Nginx
+        - Reload Nginx
+
+#    - name: Deploy the server configuration
+#      ansible.builtin.copy:
+#        src: files/training.conf
+#        dest: /etc/nginx/conf.d/training.conf
+#        owner: root
+#        group: root
+#        mode: '0644'
+
+    - name: Enable and start Nginx
+      ansible.builtin.service:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Apply pending service changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Check the training website
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ web_port }}"
+        return_content: true
+      register: web_response
+
+    - name: Show the HTTP status
+      ansible.builtin.debug:
+        var: web_response.status
+
+    - name: Show each host's inputs and facts
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: {{ web_title }};
+          OS={{ ansible_facts['distribution'] }};
+          port={{ web_port }}
+  handlers:
+    - name: Validate Nginx
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

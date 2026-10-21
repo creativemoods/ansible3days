@@ -1,0 +1,50 @@
+---
+- name: Install common packages
+  ansible.builtin.package:
+    name:
+      - htop
+      - curl
+      - ca-certificates
+    state: present
+
+- name: Create the deployment account
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    shell: "{{ item.shell }}"
+    create_home: true
+    state: present
+  loop: "{{ team_accounts }}"
+
+- name: Install the training marker
+  ansible.builtin.copy:
+    content: "Managed by Ansible training\n"
+    dest: /etc/ansible-training
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item.key }}"
+    state: directory
+    mode: "{{ item.value }}"
+  loop: "{{ app_directories | dict2items }}"
+
+- name: Install the training banner marker
+  ansible.builtin.copy:
+    content: "Training banner marker\n"
+    dest: /etc/ansible-training-banner
+    owner: root
+    group: root
+    mode: '0644'
+  when: training_banner_enabled | bool
+
+- name: Inspect the training banner marker
+  ansible.builtin.stat:
+    path: /etc/ansible-training-banner
+  register: training_banner_marker
+
+- name: Explain the existing banner marker
+  ansible.builtin.debug:
+    msg: This host has the training banner
+  when: training_banner_marker.stat.exists

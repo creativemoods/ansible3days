@@ -1,0 +1,59 @@
+- name: Install Nginx
+  ansible.builtin.package:
+    name: nginx
+    state: present
+
+- name: Create the document root
+  ansible.builtin.file:
+    path: "{{ web_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy the homepage
+  ansible.builtin.template:
+    src: templates/index.html.j2
+    dest: "{{ web_root }}/index.html"
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - content
+
+- name: Deploy the server configuration
+  ansible.builtin.template:
+    src: templates/training.conf.j2
+    dest: /etc/nginx/conf.d/training.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Validate Nginx
+    - Reload Nginx
+
+- name: Enable and start Nginx
+  ansible.builtin.service:
+    name: nginx
+    enabled: true
+    state: started
+
+- name: Apply pending service changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Check the training website
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ web_port }}"
+    return_content: true
+  register: web_response
+
+- name: Show the HTTP status
+  ansible.builtin.debug:
+    var: web_response.status
+
+- name: Show each host's inputs and facts
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}: {{ web_title }};
+      OS={{ ansible_facts['distribution'] }};
+      port={{ web_port }}

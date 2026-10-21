@@ -1,0 +1,4 @@
+web_port: 8081
+web_root: /var/www/training
+web_title: Ansible training 3
+environment_name: test

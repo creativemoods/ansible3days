@@ -1,0 +1,11 @@
+team_accounts:
+  - name: deploy
+    shell: /bin/bash
+  - name: observer
+    shell: /bin/bash
+ 
+app_directories:
+  /opt/training: '0755'
+  /opt/training/private: '0700'
+
+training_banner_enabled: false

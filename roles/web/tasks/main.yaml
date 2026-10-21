@@ -13,7 +13,7 @@
 
 - name: Deploy the homepage
   ansible.builtin.template:
-    src: templates/index.html.j2
+    src: index.html.j2
     dest: "{{ web_root }}/index.html"
     owner: root
     group: root
@@ -23,7 +23,7 @@
 
 - name: Deploy the server configuration
   ansible.builtin.template:
-    src: templates/training.conf.j2
+    src: training.conf.j2
     dest: /etc/nginx/conf.d/training.conf
     owner: root
     group: root

@@ -1,0 +1,4 @@
+<h1>{{ web_title | e }}</h1>
+<p>Host: {{ inventory_hostname | e }}</p>
+<p>OS: {{ ansible_facts['distribution'] | e }}</p>
+<p>Environment: {{ environment_name | upper | e }}</p>

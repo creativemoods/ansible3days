@@ -1,0 +1,3 @@
+web_port: 8080
+web_root: /var/www/training
+web_title: Ansible training
